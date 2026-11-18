@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "432125506144",
+    "project_id": "car-enthusiast-7b2ab",
+    "storage_bucket": "car-enthusiast-7b2ab.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:432125506144:android:945539e34415bebf4e8905",
+        "android_client_info": {
+          "package_name": "bg.car.enthusiast"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "432125506144-5hgeltbrvv6anefhdtkm1tu9n7885lba.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "bg.car.enthusiast",
+            "certificate_hash": "31b5c8055f4e079b0a26a60486b85ea53142ca2b"
+          }
+        },
+        {
+          "client_id": "432125506144-utlp8h3hgg374iee98fhgd24uapuks6k.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBcztelmkjKPkn9TGPzsAgAE_hywKZq21o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "432125506144-utlp8h3hgg374iee98fhgd24uapuks6k.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

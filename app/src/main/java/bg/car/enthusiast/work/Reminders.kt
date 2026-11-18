@@ -17,6 +17,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import bg.car.enthusiast.R
+import bg.car.enthusiast.cloud.Cloud
 import bg.car.enthusiast.core.Level
 import bg.car.enthusiast.core.Rules
 import bg.car.enthusiast.core.Settings
@@ -52,6 +53,7 @@ object Scheduler {
 
 class DailyWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        runCatching { Cloud.pull(applicationContext) }
         Notifier.checkDue(applicationContext)
         runCatching { Notifier.checkUpdate(applicationContext) }
         Result.success()

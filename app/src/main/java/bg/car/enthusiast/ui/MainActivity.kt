@@ -33,7 +33,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -50,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import bg.car.enthusiast.BuildConfig
 import bg.car.enthusiast.R
+import bg.car.enthusiast.cloud.Cloud
 import bg.car.enthusiast.core.Data
 import bg.car.enthusiast.core.Due
 import bg.car.enthusiast.core.Level
@@ -88,7 +91,21 @@ fun App(store: Store) {
     var data by remember { mutableStateOf(store.load()) }
     var tab by remember { mutableIntStateOf(0) }
     var carId by remember { mutableStateOf<Long?>(null) }
-    val change: (((Data) -> Data)) -> Unit = { block -> data = store.update(block) }
+    val ctx = LocalContext.current
+    var garage by remember { mutableStateOf(Cloud.garageId(ctx)) }
+    val change: (((Data) -> Data)) -> Unit = { block ->
+        val old = data
+        data = store.update(block)
+        Cloud.push(ctx, old, data)
+    }
+    // При всяко отваряне проверяваме дали някой не е споделил гаража си с нас.
+    LaunchedEffect(Unit) {
+        if (Cloud.email != null) garage = runCatching { Cloud.connect(ctx) }.getOrDefault(garage)
+    }
+    DisposableEffect(garage) {
+        val stop = Cloud.listen(ctx) { data = it }
+        onDispose { stop() }
+    }
 
     val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     LaunchedEffect(Unit) {
@@ -121,7 +138,7 @@ fun App(store: Store) {
             when (tab) {
                 0 -> Upcoming(data, onOpen = { carId = it }, onCars = { tab = 1 })
                 1 -> Cars(data, change, onOpen = { carId = it })
-                else -> SettingsScreen(data, change)
+                else -> SettingsScreen(data, change, garage) { garage = it }
             }
         }
     }
@@ -261,9 +278,11 @@ private fun UpdateBanner() {
 }
 
 @Composable
-private fun SettingsScreen(data: Data, change: ((Data) -> Data) -> Unit) {
+private fun SettingsScreen(data: Data, change: ((Data) -> Data) -> Unit, garage: String?, onGarage: (String?) -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
+    Account(garage, onGarage)
+    HorizontalDivider()
     var s by remember { mutableStateOf(data.settings) }
     var message by remember { mutableStateOf("") }
 
@@ -347,5 +366,82 @@ private fun SettingsScreen(data: Data, change: ((Data) -> Data) -> Unit) {
             }
         }
     }) { Text("Провери за нова версия") }
+    if (message.isNotEmpty()) Text(message)
+}
+
+/** Вход с Google и споделяне на колите с други хора. */
+@Composable
+private fun Account(garage: String?, onGarage: (String?) -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf("") }
+    var members by remember { mutableStateOf<List<String>>(emptyList()) }
+    var newMail by remember { mutableStateOf("") }
+    val me = Cloud.email
+
+    fun act(block: suspend () -> String) {
+        busy = true
+        message = ""
+        scope.launch {
+            message = try {
+                block()
+            } catch (e: Exception) {
+                "Грешка: ${e.message ?: e}"
+            }
+            members = runCatching { Cloud.members(ctx) }.getOrDefault(members)
+            busy = false
+        }
+    }
+
+    LaunchedEffect(garage) {
+        members = runCatching { Cloud.members(ctx) }.getOrDefault(emptyList())
+    }
+
+    Text("Профил и споделяне", style = MaterialTheme.typography.titleMedium)
+    if (me == null || garage == null) {
+        Text(
+            "Влез с Google, за да се пазят колите в облака и да ги споделиш със семейството. " +
+                "Всички, които добавиш, виждат и променят едни и същи коли и получават известията.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Button(onClick = {
+            act {
+                val mail = if (Cloud.email == null) Cloud.signIn(ctx) else Cloud.email!!
+                onGarage(Cloud.connect(ctx))
+                "Влезе като $mail. Данните са качени в облака."
+            }
+        }, enabled = !busy) { Text("Вход с Google") }
+    } else {
+        Text("Влязъл като $me")
+        Text("Достъп до колите имат:", style = MaterialTheme.typography.bodySmall)
+        members.forEach { m ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(m, Modifier.weight(1f))
+                if (m != me) {
+                    TextButton(onClick = { act { Cloud.removeMember(ctx, m); "$m е премахнат." } }, enabled = !busy) {
+                        Text("Махни", color = Red)
+                    }
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Field("Gmail на човек за споделяне", newMail, Modifier.weight(1f)) { newMail = it }
+            OutlinedButton(onClick = {
+                val mail = newMail.trim()
+                act {
+                    Cloud.addMember(ctx, mail)
+                    newMail = ""
+                    "Добавен е $mail. Нека инсталира приложението и влезе с този Google акаунт."
+                }
+            }, enabled = !busy && newMail.contains('@')) { Text("Добави") }
+        }
+        TextButton(onClick = {
+            Cloud.signOut(ctx)
+            onGarage(null)
+            message = "Излезе от профила. Данните остават на телефона."
+        }) { Text("Изход") }
+    }
+    if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
     if (message.isNotEmpty()) Text(message)
 }

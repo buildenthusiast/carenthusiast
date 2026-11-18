@@ -51,11 +51,11 @@ object Json {
         )
     }
 
-    private fun car(c: Car) = JSONObject()
+    fun car(c: Car) = JSONObject()
         .put("id", c.id).put("name", c.name).put("plate", c.plate).putOpt("year", c.year)
         .putOpt("odometer", c.odometer).putOpt("odometerDate", c.odometerDate?.toString()).put("note", c.note)
 
-    private fun car(j: JSONObject) = Car(
+    fun car(j: JSONObject) = Car(
         id = j.getLong("id"),
         name = j.optString("name"),
         plate = j.optString("plate"),
@@ -65,12 +65,12 @@ object Json {
         note = j.optString("note"),
     )
 
-    private fun item(i: Item) = JSONObject()
+    fun item(i: Item) = JSONObject()
         .put("id", i.id).put("carId", i.carId).put("kind", i.kind.name).put("title", i.title)
         .putOpt("from", i.from?.toString()).putOpt("to", i.to?.toString()).putOpt("lastKm", i.lastKm)
         .putOpt("intervalKm", i.intervalKm).putOpt("cost", i.cost).put("note", i.note)
 
-    private fun item(j: JSONObject) = Item(
+    fun item(j: JSONObject) = Item(
         id = j.getLong("id"),
         carId = j.getLong("carId"),
         kind = runCatching { Kind.valueOf(j.getString("kind")) }.getOrDefault(Kind.CUSTOM),
@@ -83,11 +83,11 @@ object Json {
         note = j.optString("note"),
     )
 
-    private fun repair(r: Repair) = JSONObject()
+    fun repair(r: Repair) = JSONObject()
         .put("id", r.id).put("carId", r.carId).put("date", r.date.toString()).put("title", r.title)
         .putOpt("km", r.km).putOpt("cost", r.cost).put("note", r.note)
 
-    private fun repair(j: JSONObject) = Repair(
+    fun repair(j: JSONObject) = Repair(
         id = j.getLong("id"),
         carId = j.getLong("carId"),
         date = j.dateOrNull("date") ?: LocalDate.now(),
