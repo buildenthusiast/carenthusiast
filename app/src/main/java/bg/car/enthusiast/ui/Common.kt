@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -110,3 +114,25 @@ fun String.toIntClean(): Int? = filter { it.isDigit() }.toIntOrNull()
 fun String.toMoney(): Double? = replace(',', '.').filter { it.isDigit() || it == '.' }.toDoubleOrNull()
 fun Int?.str() = this?.toString() ?: ""
 fun Double?.str() = this?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() } ?: ""
+
+/** Падащо меню с готови стойности. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T> Dropdown(label: String, value: T, options: List<T>, text: (T) -> String, onChange: (T) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded = open, onExpandedChange = { open = it }) {
+        OutlinedTextField(
+            value = text(value),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = open) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            options.forEach { o ->
+                DropdownMenuItem(text = { Text(text(o)) }, onClick = { onChange(o); open = false })
+            }
+        }
+    }
+}

@@ -62,6 +62,11 @@ private sealed interface Edit {
 @Composable
 fun CarScreen(car: Car, data: Data, change: ((Data) -> Data) -> Unit, onBack: () -> Unit) {
     var edit by remember { mutableStateOf<Edit?>(null) }
+    var online by remember { mutableStateOf<OnlineCheck?>(null) }
+    online?.let {
+        OnlineCheckScreen(it, car.plate) { online = null }
+        return
+    }
     val dues = data.items.filter { it.carId == car.id }.map { Rules.due(it, car, data.settings) }.sortedBy { it.urgency }
     val repairs = data.repairs.filter { it.carId == car.id }.sortedByDescending { it.date }
 
@@ -89,6 +94,16 @@ fun CarScreen(car: Car, data: Data, change: ((Data) -> Data) -> Unit, onBack: ()
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { edit = Edit.Odometer }) { Text("Обнови км") }
                         OutlinedButton(onClick = { edit = Edit.CarInfo }) { Text("Редактирай") }
+                    }
+                    if (car.plate.isNotBlank()) {
+                        Text("Провери онлайн по номер:", style = MaterialTheme.typography.bodySmall)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            AssistChip(onClick = { online = OnlineCheck.VIGNETTE }, label = { Text("Винетка") })
+                            AssistChip(onClick = { online = OnlineCheck.CIVIL }, label = { Text("Гражданска") })
+                            AssistChip(onClick = { online = OnlineCheck.INSPECTION }, label = { Text("Преглед") })
+                        }
+                    } else {
+                        Text("Въведи регистрационен номер, за да проверяваш винетка, гражданска и преглед онлайн.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }

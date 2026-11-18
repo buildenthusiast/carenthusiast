@@ -66,7 +66,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.math.roundToInt
 
 /** Намерената нова версия, обща за целия екран. */
 object UpdateState {
@@ -193,7 +192,9 @@ fun DueCard(d: Due, showCar: Boolean, onClick: () -> Unit) {
 private fun Cars(data: Data, change: ((Data) -> Data) -> Unit, onOpen: (Long) -> Unit) {
     var adding by remember { mutableStateOf(false) }
     val all = Rules.all(data)
-    data.cars.forEach { car ->
+    // Най-отгоре е колата с най-скоро изтичащ срок.
+    val cars = data.cars.sortedBy { car -> all.filter { it.car.id == car.id }.minOfOrNull { it.urgency } ?: Long.MAX_VALUE }
+    cars.forEach { car ->
         val dues = all.filter { it.car.id == car.id }
         val worst = dues.firstOrNull()
         Card(Modifier.fillMaxWidth().clickable { onOpen(car.id) }) {
@@ -306,14 +307,14 @@ private fun SettingsScreen(data: Data, change: ((Data) -> Data) -> Unit, garage:
     }
 
     Text("Известия", style = MaterialTheme.typography.titleMedium)
-    LabeledSlider("Подсещай ${s.notifyDays} дни преди изтичане", s.notifyDays.toFloat(), 1f..30f, 1f) {
-        s = s.copy(notifyDays = it.roundToInt())
+    Dropdown("Подсещай преди изтичане", s.notifyDays, listOf(1, 2, 3, 5, 7, 10, 14, 21, 30), { bg.car.enthusiast.core.Texts.days(it.toLong()) + " преди" }) {
+        s = s.copy(notifyDays = it)
     }
-    LabeledSlider("Час на известието: ${s.notifyHour}:00", s.notifyHour.toFloat(), 6f..22f, 1f) {
-        s = s.copy(notifyHour = it.roundToInt())
+    Dropdown("Час на известието", s.notifyHour, (6..22).toList(), { "%02d:00".format(it) }) {
+        s = s.copy(notifyHour = it)
     }
-    LabeledSlider("Подсещай ${bg.car.enthusiast.core.Texts.km(s.kmWarn)} преди обслужване", s.kmWarn.toFloat(), 100f..3000f, 100f) {
-        s = s.copy(kmWarn = (it / 100).roundToInt() * 100)
+    Dropdown("Подсещай за обслужване", s.kmWarn, listOf(300, 500, 1000, 1500, 2000, 3000), { bg.car.enthusiast.core.Texts.km(it) + " преди" }) {
+        s = s.copy(kmWarn = it)
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Checkbox(checked = s.autoUpdate, onCheckedChange = { s = s.copy(autoUpdate = it) })
