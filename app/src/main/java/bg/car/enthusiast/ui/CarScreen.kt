@@ -1,5 +1,6 @@
 package bg.car.enthusiast.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import bg.car.enthusiast.core.Car
 import bg.car.enthusiast.core.Data
 import bg.car.enthusiast.core.Item
@@ -82,41 +84,45 @@ fun CarScreen(car: Car, data: Data, change: ((Data) -> Data) -> Unit, onBack: ()
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        "Километраж: " + (car.odometer?.let { Texts.km(it) } ?: "не е въведен"),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    car.odometerDate?.let { Text("Обновен на ${Texts.date(it)}", style = MaterialTheme.typography.bodySmall) }
-                    if (car.year != null) Text("Година: ${car.year}")
-                    if (car.note.isNotBlank()) Text(car.note, style = MaterialTheme.typography.bodySmall)
+            CarHero(car) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    car.odometerDate?.let { Text("Километражът е обновен на ${Texts.date(it)}", color = Muted, fontSize = 12.sp) }
+                    if (car.note.isNotBlank()) Text(car.note, color = Muted, fontSize = 13.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { edit = Edit.Odometer }) { Text("Обнови км") }
                         OutlinedButton(onClick = { edit = Edit.CarInfo }) { Text("Редактирай") }
                     }
                     if (car.plate.isNotBlank()) {
-                        Text("Провери онлайн по номер:", style = MaterialTheme.typography.bodySmall)
+                        Text("Провери онлайн по номер:", color = Muted, fontSize = 12.sp)
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             AssistChip(onClick = { online = OnlineCheck.VIGNETTE }, label = { Text("Винетка") })
                             AssistChip(onClick = { online = OnlineCheck.CIVIL }, label = { Text("Гражданска") })
                             AssistChip(onClick = { online = OnlineCheck.INSPECTION }, label = { Text("Преглед") })
                         }
                     } else {
-                        Text("Въведи регистрационен номер, за да проверяваш винетка, гражданска и преглед онлайн.", style = MaterialTheme.typography.bodySmall)
+                        Text("Въведи регистрационен номер, за да проверяваш винетка, гражданска и преглед онлайн.", color = Muted, fontSize = 12.sp)
                     }
                 }
             }
 
-            Text("Срокове и обслужване", style = MaterialTheme.typography.titleMedium)
+            SectionLabel("Срокове и обслужване")
             dues.forEach { d ->
                 val urgent = d.level == Level.EXPIRED || d.level == Level.SOON
+                val (bg, line) = when (d.level) {
+                    Level.EXPIRED -> RedBg to RedLine
+                    Level.SOON -> GoldBg to GoldLine
+                    else -> CardBg to CardBg
+                }
                 Card(
                     Modifier.fillMaxWidth().clickable { edit = Edit.ItemEdit(d.item, renewing = false) },
-                    colors = if (urgent) CardDefaults.cardColors(containerColor = levelColor(d.level).copy(alpha = 0.12f)) else CardDefaults.cardColors(),
+                    colors = CardDefaults.cardColors(containerColor = bg),
+                    border = BorderStroke(1.dp, line),
                 ) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(d.item.name, style = MaterialTheme.typography.titleMedium)
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(d.item.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                            Text(Texts.short(d), color = levelColor(d.level), fontSize = if (urgent) 24.sp else 16.sp, fontWeight = if (urgent) FontWeight.Bold else FontWeight.Normal)
+                        }
                         Text(d.text, color = levelColor(d.level), fontWeight = if (urgent) FontWeight.Bold else FontWeight.Normal)
                         val period = listOfNotNull(
                             d.item.from?.let { "${d.item.kind.fromLabel.lowercase()} ${Texts.date(it)}" },
@@ -143,7 +149,7 @@ fun CarScreen(car: Car, data: Data, change: ((Data) -> Data) -> Unit, onBack: ()
             }
 
             HorizontalDivider()
-            Text("Ремонти и обслужване", style = MaterialTheme.typography.titleMedium)
+            SectionLabel("Ремонти и обслужване")
             val total = repairs.mapNotNull { it.cost }.sum()
             if (total > 0) Text("Общо похарчено: ${Texts.money(total)}", style = MaterialTheme.typography.bodySmall)
             repairs.forEach { r ->

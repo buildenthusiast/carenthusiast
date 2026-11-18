@@ -154,6 +154,22 @@ object Texts {
 
     fun money(v: Double) = if (v % 1.0 == 0.0) "${v.toLong()} €" else String.format(java.util.Locale.US, "%.2f €", v)
 
+    /** Кратко: „3 дни“, „850 км“, „4 мес.“ – за голямото число вдясно. */
+    fun short(d: Due): String {
+        val dl = d.daysLeft
+        val kl = d.kmLeft
+        val useKm = kl != null && (dl == null || kl / 50L < dl)
+        return when {
+            useKm && kl!! < 0 -> "−" + km(-kl)
+            useKm -> km(kl!!)
+            dl == null -> "–"
+            dl < 0 -> "изтекло"
+            dl == 0L -> "днес"
+            dl < 60 -> days(dl)
+            else -> "${dl / 30} мес."
+        }
+    }
+
     fun due(d: Due): String {
         val parts = mutableListOf<String>()
         d.daysLeft?.let { n ->

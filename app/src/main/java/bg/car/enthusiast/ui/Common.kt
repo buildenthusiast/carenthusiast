@@ -34,15 +34,15 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import kotlin.math.roundToInt
 
-val Amber = Color(0xFFF9A825)
-val Red = Color(0xFFC62828)
-val Green = Color(0xFF2E7D32)
+val Amber = Color(0xFFF5B323)
+val Red = Color(0xFFFF6B6B)
+val Green = Color(0xFF7BD88F)
 
 fun levelColor(l: Level): Color = when (l) {
     Level.EXPIRED -> Red
-    Level.SOON -> Color(0xFFE65100)
-    Level.OK -> Green
-    Level.UNKNOWN -> Color.Gray
+    Level.SOON -> Amber
+    Level.OK -> Color(0xFFA3A6AD)
+    Level.UNKNOWN -> Color(0xFF6E727A)
 }
 
 @Composable

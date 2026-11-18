@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,8 +31,13 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,6 +55,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import bg.car.enthusiast.core.Texts
 import androidx.compose.material3.Icon
 import bg.car.enthusiast.BuildConfig
 import bg.car.enthusiast.R
@@ -78,7 +86,7 @@ class MainActivity : ComponentActivity() {
         val store = Store(this)
         Scheduler.schedule(this, store.load().settings, replace = false)
         setContent {
-            MaterialTheme {
+            CarTheme {
                 Surface(Modifier.fillMaxSize().safeDrawingPadding()) { App(store) }
             }
         }
@@ -119,18 +127,9 @@ fun App(store: Store) {
     }
 
     Column {
-        Row(Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(painterResource(R.drawable.ic_car), null, Modifier.size(28.dp), tint = Amber)
-            Spacer(Modifier.width(8.dp))
-            Text("Car Enthusiast", style = MaterialTheme.typography.titleLarge)
-        }
-        TabRow(selectedTabIndex = tab) {
-            listOf("Предстоящи", "Автомобили", "Настройки").forEachIndexed { i, title ->
-                Tab(selected = tab == i, onClick = { tab = i }, text = { Text(title) })
-            }
-        }
+        BrandHeader()
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             UpdateBanner()
@@ -138,6 +137,27 @@ fun App(store: Store) {
                 0 -> Upcoming(data, onOpen = { carId = it }, onCars = { tab = 1 })
                 1 -> Cars(data, change, onOpen = { carId = it })
                 else -> SettingsScreen(data, change, garage) { garage = it }
+            }
+        }
+        NavigationBar(containerColor = Ink, tonalElevation = 0.dp) {
+            listOf(
+                Triple("Предстоящи", Icons.Filled.DateRange, 0),
+                Triple("Автомобили", Icons.AutoMirrored.Filled.List, 1),
+                Triple("Настройки", Icons.Filled.Settings, 2),
+            ).forEach { (label, icon, i) ->
+                NavigationBarItem(
+                    selected = tab == i,
+                    onClick = { tab = i },
+                    icon = { Icon(icon, null) },
+                    label = { Text(label) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Gold,
+                        selectedTextColor = Gold,
+                        indicatorColor = GoldBg,
+                        unselectedIconColor = Muted,
+                        unselectedTextColor = Muted,
+                    ),
+                )
             }
         }
     }
@@ -161,29 +181,48 @@ private fun Upcoming(data: Data, onOpen: (Long) -> Unit, onCars: () -> Unit) {
         Text("Няма въведени срокове. Отвори колата в „Автомобили“ и добави винетка, гражданска и т.н.")
         return
     }
+    val first = all.first()
+    CarHero(first.car, Modifier.clickable { onOpen(first.car.id) })
     val urgent = all.filter { it.level == Level.EXPIRED || it.level == Level.SOON }
+    val multi = data.cars.size > 1
     if (urgent.isNotEmpty()) {
-        Text("Внимание", style = MaterialTheme.typography.titleMedium, color = Red)
-        urgent.forEach { DueCard(it, showCar = true) { onOpen(it.car.id) } }
+        SectionLabel("Внимание")
+        urgent.forEach { DueCard(it, showCar = multi) { onOpen(it.car.id) } }
     }
     val rest = all - urgent.toSet()
     if (rest.isNotEmpty()) {
-        Text("Предстоящи по дата", style = MaterialTheme.typography.titleMedium)
-        rest.forEach { DueCard(it, showCar = true) { onOpen(it.car.id) } }
+        SectionLabel("Предстоящи")
+        rest.forEach { DueCard(it, showCar = multi) { onOpen(it.car.id) } }
     }
 }
 
 @Composable
 fun DueCard(d: Due, showCar: Boolean, onClick: () -> Unit) {
     val urgent = d.level == Level.EXPIRED || d.level == Level.SOON
+    val (bg, line) = when (d.level) {
+        Level.EXPIRED -> RedBg to RedLine
+        Level.SOON -> GoldBg to GoldLine
+        else -> CardBg to CardBg
+    }
     Card(
         Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = if (urgent) CardDefaults.cardColors(containerColor = levelColor(d.level).copy(alpha = 0.12f)) else CardDefaults.cardColors(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = bg),
+        border = BorderStroke(1.dp, line),
     ) {
-        Column(Modifier.padding(12.dp)) {
-            Text(d.item.name, style = MaterialTheme.typography.titleMedium)
-            if (showCar) Text(d.car.title, style = MaterialTheme.typography.bodySmall)
-            Text(d.text, color = levelColor(d.level), fontWeight = if (urgent) FontWeight.Bold else FontWeight.Normal)
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(d.item.name, fontSize = 16.sp, fontWeight = if (urgent) FontWeight.Bold else FontWeight.Medium)
+                if (showCar) Text(d.car.title, color = Muted, fontSize = 13.sp)
+                Text(d.text, color = if (urgent) levelColor(d.level).copy(alpha = 0.85f) else Muted, fontSize = 13.sp)
+            }
+            Text(
+                Texts.short(d),
+                color = if (urgent) levelColor(d.level) else Muted,
+                fontSize = if (urgent) 26.sp else 16.sp,
+                fontWeight = if (urgent) FontWeight.Bold else FontWeight.Normal,
+                modifier = Modifier.padding(start = 12.dp),
+            )
         }
     }
 }
@@ -197,23 +236,14 @@ private fun Cars(data: Data, change: ((Data) -> Data) -> Unit, onOpen: (Long) ->
     cars.forEach { car ->
         val dues = all.filter { it.car.id == car.id }
         val worst = dues.firstOrNull()
-        Card(Modifier.fillMaxWidth().clickable { onOpen(car.id) }) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(car.name, style = MaterialTheme.typography.titleLarge)
-                val info = listOfNotNull(
-                    car.plate.ifBlank { null },
-                    car.year?.toString(),
-                    car.odometer?.let { bg.car.enthusiast.core.Texts.km(it) },
-                ).joinToString(" · ")
-                if (info.isNotBlank()) Text(info, style = MaterialTheme.typography.bodySmall)
-                val bad = dues.count { it.level == Level.EXPIRED }
-                val soon = dues.count { it.level == Level.SOON }
-                when {
-                    bad > 0 -> Text("Изтекли: $bad", color = Red, fontWeight = FontWeight.Bold)
-                    soon > 0 -> Text("Изтичат скоро: $soon", color = levelColor(Level.SOON), fontWeight = FontWeight.Bold)
-                    worst != null -> Text("Най-близко: ${worst.item.name} – ${worst.text}", color = Green)
-                    else -> Text("Няма въведени срокове", style = MaterialTheme.typography.bodySmall)
-                }
+        CarHero(car, Modifier.clickable { onOpen(car.id) }) {
+            val bad = dues.count { it.level == Level.EXPIRED }
+            val soon = dues.count { it.level == Level.SOON }
+            when {
+                bad > 0 -> Text("Изтекли: $bad", color = Red, fontWeight = FontWeight.Bold)
+                soon > 0 -> Text("Изтичат скоро: $soon", color = Gold, fontWeight = FontWeight.Bold)
+                worst != null -> Text("Най-близко: ${worst.item.name} – ${Texts.short(worst)}", color = Muted)
+                else -> Text("Няма въведени срокове", color = Muted, fontSize = 13.sp)
             }
         }
     }
@@ -238,7 +268,7 @@ private fun UpdateBanner() {
         if (UpdateState.release == null) UpdateState.release = withContext(Dispatchers.IO) { runCatching { Updater.latest() }.getOrNull() }?.takeIf { Updater.isNewer(it) }
     }
     val r = UpdateState.release ?: return
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Amber.copy(alpha = 0.2f))) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = GoldBg), border = BorderStroke(1.dp, GoldLine)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Има нова версия ${r.versionName}", style = MaterialTheme.typography.titleMedium)
             if (r.notes.isNotBlank()) Text(r.notes, style = MaterialTheme.typography.bodySmall)
