@@ -29,6 +29,8 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
           echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          # Отпечатъкът е нужен за Firebase и показва, че ключът е същият като преди.
+          keytool -list -v -keystore "$RUNNER_TEMP/release.jks" -storepass "${{ secrets.KEYSTORE_PASSWORD }}" | grep -E "SHA1:|SHA256:"
 
       - name: Build APK
         env:
