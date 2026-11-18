@@ -40,7 +40,7 @@ enum class OnlineCheck(
     VIGNETTE(
         "Винетка (BG TOLL)",
         "https://check.bgtoll.bg/#/",
-        "input[type=text]",
+        "input.form-control",
         "Проверка",
         true,
         "Проверката е на официалния сайт на BG TOLL.",
@@ -123,8 +123,11 @@ private fun fillScript(check: OnlineCheck, plate: String): String {
             var el = document.querySelector($sel);
             if (el) {
               clearInterval(t);
-              var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-              setter.call(el, $p);
+              try {
+                Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, $p);
+              } catch (e) {
+                el.value = $p;
+              }
               el.dispatchEvent(new Event('input', { bubbles: true }));
               el.dispatchEvent(new Event('change', { bubbles: true }));
               var label = $click;
